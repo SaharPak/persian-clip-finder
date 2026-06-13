@@ -1,13 +1,17 @@
-"""Clip cutting and subtitle burn-in with FFmpeg."""
+"""Clip cutting, 9:16 vertical reframing, and subtitle burn-in with FFmpeg."""
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 from functools import lru_cache
 from pathlib import Path
 
-from .config import CLIP_DIR
+from .config import CLIP_DIR, SUBTITLE_DIR
+from .subtitles import build_ass
+
+VERTICAL_W, VERTICAL_H = 1080, 1920
 
 
 def _has_ass_filter(ffmpeg: str) -> bool:
@@ -44,9 +48,50 @@ def _ensure_ffmpeg() -> str:
         pass
 
     if system:
-        # Usable for cutting, but subtitle burn-in will fail.
         return system
     raise RuntimeError("FFmpeg not found. Install it or `pip install static-ffmpeg`.")
+
+
+@lru_cache(maxsize=1)
+def _ensure_ffprobe() -> str | None:
+    probe = shutil.which("ffprobe")
+    if probe:
+        return probe
+    try:
+        from static_ffmpeg import run
+
+        _, static_probe = run.get_or_fetch_platform_executables_else_raise()
+        return static_probe
+    except Exception:
+        return None
+
+
+def _probe_dimensions(source: str) -> tuple[int, int]:
+    """Return (width, height) of the source video, defaulting to 1280x720."""
+    probe = _ensure_ffprobe()
+    if not probe:
+        return 1280, 720
+    try:
+        out = subprocess.run(
+            [
+                probe,
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height",
+                "-of",
+                "json",
+                source,
+            ],
+            capture_output=True,
+            text=True,
+        ).stdout
+        stream = json.loads(out)["streams"][0]
+        return int(stream["width"]), int(stream["height"])
+    except Exception:
+        return 1280, 720
 
 
 def _run(cmd: list[str]) -> None:
@@ -69,31 +114,45 @@ def generate_clip(
     start: float,
     end: float,
     out_name: str,
-    ass_path: str | None = None,
+    segments: list[dict] | None = None,
+    vertical: bool = False,
+    font: str = "Geeza Pro",
 ) -> str:
-    """Cut [start, end] from source. Optionally burn an ASS subtitle file.
+    """Cut [start, end] from source.
 
-    Returns the path to the generated MP4.
+    If ``segments`` (clip-relative) are given, burn them as RTL Persian
+    subtitles. If ``vertical`` is True, reframe to 1080x1920 (9:16) for
+    Shorts/Reels. Returns the path to the generated MP4.
     """
     ffmpeg = _ensure_ffmpeg()
     out_path = CLIP_DIR / f"{out_name}.mp4"
     duration = max(0.1, end - start)
 
-    cmd = [
-        ffmpeg,
-        "-y",
-        "-ss",
-        f"{start}",
-        "-i",
-        source,
-        "-t",
-        f"{duration}",
-    ]
+    if vertical:
+        out_w, out_h = VERTICAL_W, VERTICAL_H
+    else:
+        out_w, out_h = _probe_dimensions(source)
 
-    if ass_path:
-        vf = f"ass={_escape_for_filter(ass_path)}"
-        cmd += ["-vf", vf]
+    filters: list[str] = []
+    if vertical:
+        filters.append(
+            f"scale={out_w}:{out_h}:force_original_aspect_ratio=increase"
+        )
+        filters.append(f"crop={out_w}:{out_h}")
 
+    if segments:
+        ass_path = build_ass(
+            segments,
+            SUBTITLE_DIR / f"{out_name}.ass",
+            width=out_w,
+            height=out_h,
+            font=font,
+        )
+        filters.append(f"ass={_escape_for_filter(ass_path)}")
+
+    cmd = [ffmpeg, "-y", "-ss", f"{start}", "-i", source, "-t", f"{duration}"]
+    if filters:
+        cmd += ["-vf", ",".join(filters)]
     cmd += [
         "-c:v",
         "libx264",

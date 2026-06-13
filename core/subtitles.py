@@ -10,15 +10,15 @@ PDF = "\u202c"  # Pop Directional Formatting
 
 ASS_HEADER = """[Script Info]
 ScriptType: v4.00+
-PlayResX: 1280
-PlayResY: 720
+PlayResX: {width}
+PlayResY: {height}
 WrapStyle: 0
 ScaledBorderAndShadow: yes
 YCbCr Matrix: TV.601
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Persian,{font},{size},&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,3,1,2,40,40,60,1
+Style: Persian,{font},{size},&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,{outline},1,2,{margin_h},{margin_h},{margin_v},1
 
 [Events]
 Format: Layer, Start, End, Style, MarginL, MarginR, MarginV, Effect, Text
@@ -56,12 +56,37 @@ def segments_in_window(
 def build_ass(
     segments: list[dict],
     out_path: str | Path,
+    width: int = 1280,
+    height: int = 720,
     font: str = "Geeza Pro",
-    size: int = 48,
+    font_size: int | None = None,
+    margin_v: int | None = None,
 ) -> str:
-    """Write an ASS subtitle file for the given (clip-relative) segments."""
+    """Write an ASS subtitle file sized to the target output resolution.
+
+    ``font_size`` and ``margin_v`` default to fractions of the output height so
+    text stays proportional whether the clip is landscape or 9:16 vertical.
+    ``margin_v`` is the distance from the bottom; the default lifts captions
+    well above any baked-in lower-third banners.
+    """
     out_path = Path(out_path)
-    lines = [ASS_HEADER.format(font=font, size=size)]
+    if font_size is None:
+        font_size = max(22, round(height * 0.05))
+    if margin_v is None:
+        margin_v = round(height * 0.14)
+    margin_h = round(width * 0.05)
+    outline = max(2, round(height * 0.004))
+
+    header = ASS_HEADER.format(
+        width=width,
+        height=height,
+        font=font,
+        size=font_size,
+        outline=outline,
+        margin_h=margin_h,
+        margin_v=margin_v,
+    )
+    lines = [header]
     for seg in segments:
         text = seg["text"].replace("\n", " ").strip()
         text = f"{RLE}{text}{PDF}"

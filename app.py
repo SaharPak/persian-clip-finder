@@ -13,7 +13,7 @@ from core import config
 from core.clip import generate_clip
 from core.download import download_youtube, save_upload
 from core.highlights import find_highlights
-from core.subtitles import build_ass, segments_in_window
+from core.subtitles import segments_in_window
 from core.transcribe import (
     format_timestamp,
     transcribe,
@@ -180,28 +180,27 @@ else:
     ]
     choice = st.selectbox("Choose a highlight", range(len(labels)),
                           format_func=lambda i: labels[i])
-    burn = st.checkbox("Burn Persian subtitles (RTL)", value=True)
+    col_a, col_b = st.columns(2)
+    burn = col_a.checkbox("Burn Persian subtitles (RTL)", value=True)
+    vertical = col_b.checkbox("9:16 vertical (Shorts/Reels)", value=False)
 
     if st.button("🎞️ Generate Clip", type="primary"):
         h = st.session_state.highlights[choice]
         try:
-            ass_path = None
+            clip_segs = None
             if burn:
                 clip_segs = segments_in_window(
                     st.session_state.segments, h["start"], h["end"]
-                )
-                ass_path = build_ass(
-                    clip_segs,
-                    config.SUBTITLE_DIR / f"clip_{choice+1}.ass",
-                    font=sub_font.strip() or "Geeza Pro",
                 )
             with st.spinner("Exporting clip with FFmpeg…"):
                 out = generate_clip(
                     st.session_state.video_path,
                     h["start"],
                     h["end"],
-                    out_name=f"clip_{choice+1}",
-                    ass_path=ass_path,
+                    out_name=f"clip_{choice+1}{'_vertical' if vertical else ''}",
+                    segments=clip_segs,
+                    vertical=vertical,
+                    font=sub_font.strip() or "Geeza Pro",
                 )
             st.session_state.last_clip = out
             st.success("Clip ready!")

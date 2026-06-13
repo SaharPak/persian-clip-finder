@@ -23,7 +23,8 @@ Each line is formatted as: [start_seconds-end_seconds] text
 
 TASKS:
 1. Segment the video into its main topics (internally).
-2. Select the TOP 20 most interesting standalone moments for Shorts/Reels.
+2. Select the most interesting standalone moments for Shorts/Reels,
+   UP TO 20. Return as many GOOD ones as the content supports.
 
 Look especially for:
 - Strong opinions / hot takes
@@ -35,10 +36,14 @@ Look especially for:
 
 Rules:
 - Each highlight should be a self-contained clip, ideally 20-60 seconds.
+  For a short video, a highlight may be shorter, and the whole clip may be
+  a single highlight.
+- Return at least 1 highlight. Never ask for more content; work with what
+  is provided, even if it is short.
 - start and end MUST be in seconds (numbers) and fall within the transcript.
 - title and reason MUST be written in Persian (Farsi).
 - score is an integer 1-100 (how strong the clip is).
-- Return STRICTLY valid JSON, no markdown, no commentary.
+- Return STRICTLY valid JSON, no markdown, no commentary, no questions.
 
 Output JSON shape:
 {{
