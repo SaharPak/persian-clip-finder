@@ -52,8 +52,30 @@ Then open the URL Streamlit prints (usually http://localhost:8501).
 1. **Add a video** — paste a YouTube URL and download, or upload an MP4.
 2. **Transcribe** — runs Whisper large-v3 (first run downloads the model).
 3. **Find highlights** — pick Claude or GPT-4o in the sidebar, get a ranked table.
-4. **Generate a clip** — choose a highlight, optionally burn Persian subtitles,
-   and export/download the MP4.
+4. **Generate a clip** — choose a highlight, pick a **template** and a
+   **crop / layout**, optionally burn Persian subtitles, and export the MP4.
+
+### Templates & smart cropping
+
+Pick an output **template**:
+
+- **Instagram Reels / Story (9:16)**
+- **YouTube Short (9:16)**
+- **Square (1:1)**
+- **YouTube (16:9)**
+- **Original** (keep the full frame, just add captions)
+
+…and a **crop / layout** strategy that uses face detection (OpenCV) to reframe
+intelligently:
+
+- **Auto** — detects faces and arranges them: 1 speaker is centered, 2 speakers
+  are stacked top/bottom, 3 speakers are arranged in stacked bands.
+- **Single speaker** — center the crop on the main face.
+- **Two speakers (stacked)** — left speaker on top, right speaker on the bottom.
+- **Three speakers (stacked)** — three bands.
+- **No crop (fit & pad)** — letterbox the whole frame into the template.
+
+You can also choose the **caption position** (bottom / lower / center / top).
 
 ## Notes
 
@@ -73,6 +95,8 @@ core/
   download.py       yt-dlp download + upload handling
   transcribe.py     faster-whisper (large-v3)
   highlights.py     Claude / GPT-4o highlight detection
-  subtitles.py      RTL Persian ASS generation
-  clip.py           FFmpeg cut + subtitle burn-in
+  subtitles.py      RTL Persian ASS generation (resolution-aware)
+  templates.py      output templates + crop/caption options
+  layout.py         face detection + speaker clustering (OpenCV)
+  clip.py           FFmpeg cut, template reframing, layout, subtitle burn-in
 ```

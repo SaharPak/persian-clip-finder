@@ -14,6 +14,7 @@ from core.clip import generate_clip
 from core.download import download_youtube, save_upload
 from core.highlights import find_highlights
 from core.subtitles import segments_in_window
+from core.templates import CAPTION_POSITIONS, CROP_MODES, TEMPLATES
 from core.transcribe import (
     format_timestamp,
     transcribe,
@@ -180,9 +181,30 @@ else:
     ]
     choice = st.selectbox("Choose a highlight", range(len(labels)),
                           format_func=lambda i: labels[i])
-    col_a, col_b = st.columns(2)
-    burn = col_a.checkbox("Burn Persian subtitles (RTL)", value=True)
-    vertical = col_b.checkbox("9:16 vertical (Shorts/Reels)", value=False)
+
+    col_t, col_c = st.columns(2)
+    template_keys = list(TEMPLATES.keys())
+    template = col_t.selectbox(
+        "Template",
+        template_keys,
+        format_func=lambda k: TEMPLATES[k]["label"],
+    )
+    crop_keys = list(CROP_MODES.keys())
+    crop_mode = col_c.selectbox(
+        "Crop / layout",
+        crop_keys,
+        format_func=lambda k: CROP_MODES[k],
+        help="Auto detects faces: 1 speaker is centered, 2 are stacked "
+        "top/bottom, 3 are arranged in stacked bands.",
+    )
+
+    col_b, col_p = st.columns(2)
+    burn = col_b.checkbox("Burn Persian subtitles (RTL)", value=True)
+    caption_pos = col_p.selectbox(
+        "Caption position",
+        list(CAPTION_POSITIONS.keys()),
+        index=1,
+    )
 
     if st.button("🎞️ Generate Clip", type="primary"):
         h = st.session_state.highlights[choice]
@@ -192,14 +214,16 @@ else:
                 clip_segs = segments_in_window(
                     st.session_state.segments, h["start"], h["end"]
                 )
-            with st.spinner("Exporting clip with FFmpeg…"):
+            with st.spinner("Exporting clip with FFmpeg (detecting faces…)"):
                 out = generate_clip(
                     st.session_state.video_path,
                     h["start"],
                     h["end"],
-                    out_name=f"clip_{choice+1}{'_vertical' if vertical else ''}",
+                    out_name=f"clip_{choice+1}_{template}_{crop_mode}",
                     segments=clip_segs,
-                    vertical=vertical,
+                    template=template,
+                    crop_mode=crop_mode,
+                    caption_pos=caption_pos,
                     font=sub_font.strip() or "Geeza Pro",
                 )
             st.session_state.last_clip = out
