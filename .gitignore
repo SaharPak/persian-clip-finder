@@ -1,7 +1,25 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
-.env
-data/
-*.log
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# Editor
 .DS_Store
+.idea/
+.vscode/
+
+# Project artifacts
+data/
+outputs/
+*.log
+
+# Secrets / config
+.env
+.env.local
+config.local.yaml
+
+# OS noise
+Thumbs.db

@@ -1,0 +1,32 @@
+# Default configuration for persian-clip-finder.
+#
+# Anything you put here is overridden by environment variables
+# (and by CLI flags when using `python -m persian_clip_finder`).
+
+# LLM provider for highlight detection: claude | gpt | offline
+provider: claude
+
+# Whisper
+language: fa
+whisper_model: large-v3
+# whisper_device: auto   # auto | cpu | cuda
+# whisper_compute_type: auto
+
+# Clip selection
+top_k: 8
+aspects:
+  - 9x16
+  - 1x1
+  - 16x9
+
+# Subtitle style
+subtitle_mode: phrase_highlight   # static | word | phrase_highlight
+subtitle_position: lower          # bottom | lower | middle | top
+font: Geeza Pro                   # change on Linux (e.g. Vazirmatn)
+
+# Crop / layout
+crop_mode: auto                   # auto | single | split2 | grid3 | fit
+
+# Tech Immigrants defaults
+default_guest: ""
+default_topic: ""
